@@ -97,6 +97,33 @@ hm_data %>%
   
 ```
 
+Examples of words in the affection category are as follows: 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+bag_of_words_aff <-  hm_data %>%
+  filter(predicted_category == "affection") %>% 
+  unnest_tokens(word, text)
+
+word_count_aff <- bag_of_words_aff %>%
+  count(word, sort = TRUE) 
+word_count_aff %>% select(word) %>% head(10)
+
+
+```
+
+Examples of words in the achievement category are as follows: 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+bag_of_words_ach <-  hm_data %>%
+  filter(predicted_category == "achievement") %>% 
+  unnest_tokens(word, text)
+
+word_count_ach <- bag_of_words_ach %>%
+  count(word, sort = TRUE) 
+word_count_ach %>% select(word) %>% head(10)
+```
+
+
 Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, to roughly gain a sense of what defines their happiness, I will compare wordcloud for both groups and the 25 most frequently mentioned words by two groups of people.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
