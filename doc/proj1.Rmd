@@ -97,14 +97,12 @@ hm_data %>%
   
 ```
 
-Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, to roughly gain a sense of what defines their happiness, I will compare the 25 most frequently mentioned words by two groups of people
+Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, to roughly gain a sense of what defines their happiness, I will compare wordcould for both groups and the 25 most frequently mentioned words by two groups of people
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 s.data <- hm_data %>% filter(marital == "single")
 m.data <- hm_data %>% filter(marital == "married")
 ```
-
-
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 bag_of_words_single <-  s.data %>%
@@ -118,6 +116,32 @@ bag_of_words_married <-  m.data %>%
 
 word_count_married <- bag_of_words_married %>%
   count(word, sort = TRUE)
+
+par(mfrow = c(1,2))
+set.seed(0)
+wordcloud(word_count_single$word, word_count_single$n,
+          scale=c(3,0.5),
+          max.words=50,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Spectral"))
+
+wordcloud(word_count_married$word, word_count_married$n,
+          scale=c(3,0.5),
+          max.words=50,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Spectral"))
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
 single.freqword <- word_count_single %>% 
   head(20) %>% 
@@ -136,7 +160,7 @@ married.freqword <- word_count_married %>%
 grid.arrange(single.freqword , married.freqword, nrow = 1)
 ```
 
-For the single group, we can see that friend, family and home are some of the most important words. Also, we can see words like game and job. That means leisure and achieveement types also largely contribute to the happiness moments of single people.
+For the single group, we can see that friend, family and home are some of the most important words. Also, we can see words like game and job. That means leisure and achievement types also largely contribute to the happiness moments of single people.
 
 For the married people, friend is also a significant word. However, instead of leisure and achievement related words, we can see more words that are family related, including husband, wife, son, daughter, kids and baby. Hence, we find that most happy moments of married people are related to family and friends.
 
