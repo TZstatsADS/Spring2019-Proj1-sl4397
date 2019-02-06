@@ -1,0 +1,376 @@
+---
+title: "Happiness Moments & Marriage"
+author: "Shuang Lu (sl4397)"
+date: "2/5/2019"
+output: html_notebook
+---
+
+
+```{r load libraries, warning=FALSE, message=FALSE, echo=FALSE}
+library(tm)
+library(tidytext)
+library(tidyverse)
+library(DT)
+library(gridExtra)
+library(RColorBrewer)
+library(wordcloud)
+library(ngram)
+```
+
+```{r load data, warning=FALSE, message=FALSE, echo=FALSE}
+hm_data <- read_csv("../output/processed_moments.csv")
+
+urlfile<-'https://raw.githubusercontent.com/rit-public/HappyDB/master/happydb/data/demographic.csv'
+demo_data <- read_csv(urlfile)
+```
+
+```{r combining data, warning=FALSE, message=FALSE, echo=FALSE}
+hm_data <- hm_data %>%
+  inner_join(demo_data, by = "wid") %>%
+  select(wid,
+         original_hm,
+         gender, 
+         marital, 
+         parenthood,
+         reflection_period,
+         age, 
+         country, 
+         ground_truth_category, 
+         predicted_category,
+         text) %>%
+  mutate(count = sapply(hm_data$text, wordcount)) %>%
+  filter(gender %in% c("m", "f")) %>%
+  filter(marital %in% c("single", "married", "divorced", "separated", "widowed")) %>%
+  filter(parenthood %in% c("n", "y")) %>%
+  filter(reflection_period %in% c("24h", "3m")) %>%
+  mutate(reflection_period = fct_recode(reflection_period, 
+                                        months_3 = "3m", hours_24 = "24h")) %>% 
+  mutate(age = as.numeric(age))
+
+```
+
+#Introduction
+
+In this project, I will explore data from the HappyDB dataset, which contains 100,000 happy moments described by the interviewed people. Words that appear most frequently are shown in the following wordcloud map. Some words that stand out from the map are friends, family, job, game, etc.
+
+```{r overall wordcloud, warning=FALSE, message=FALSE, echo=FALSE}
+bag_of_words <-  hm_data %>%
+  unnest_tokens(word, text)
+
+word_count <- bag_of_words %>%
+  count(word, sort = TRUE)
+
+wordcloud(word_count$word, word_count$n,
+          scale=c(5,0.5),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Spectral"))
+```
+
+And according to those keys words, these data are categorised to the following 7 categories:
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+distinct(hm_data, predicted_category)
+```
+
+
+In this dataset, approaximately 54% of the interviewd people are sigle and 41% are married. The rest of them are either divorved, seperated or widowed. Since the majority of interviewed people fall into the categories of single and married, I will focus on these two groups and explore whether marriage alters people's definition of happiness.
+
+#Data Exploration
+
+First, let's see the overall distribution of the 7 happiness categories. From the graph, we can see that people get happiness mainly through two categoresi: affection and achievements and these two categories have approaximately same weight around 34%. 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+hm_data %>% 
+  group_by(predicted_category) %>% 
+  tally() %>% 
+  ggplot(aes(x = reorder(predicted_category, -n), y = n)) +
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = paste(round(n/sum(n)*100,2),"%"), vjust=-0.3)) +
+  labs(title = "7 Categories of Happy Moments", x = "Predicted Category", y = "count")+
+  scale_y_continuous(limits=c(0,35000), breaks = seq(0,35000,10000))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+```
+
+Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, comparing wordclous of two groups of people can roughly give us a sense of what defines their happiness.
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+s.data <- hm_data %>% filter(marital == "single")
+m.data <- hm_data %>% filter(marital == "married")
+```
+
+
+```{r single wordcloud, warning=FALSE, message=FALSE, echo=FALSE}
+set.seed(0)
+bag_of_words_single <-  s.data %>%
+  unnest_tokens(word, text)
+
+word_count_single <- bag_of_words_single %>%
+  count(word, sort = TRUE)
+
+
+wordcloud(word_count_single$word, word_count_single$n,
+          scale=c(5,0.5),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Spectral"))
+```
+
+By looking at the wordcloud of the single group, we can see that, similar to the overall wordcloud, friend, family and home are the most important words. Also, we can see words like game, dinner, birthday, movie and shopping in the surrounding. That means leisure and enjoy-the-moment types also largely contribute to the happiness moments of single people.
+
+```{r married wordcloud, warning=FALSE, message=FALSE, echo=FALSE}
+set.seed(0)
+bag_of_words_married <-  m.data %>%
+  unnest_tokens(word, text)
+
+word_count_married <- bag_of_words_married %>%
+  count(word, sort = TRUE)
+
+
+wordcloud(word_count_married$word, word_count_married$n,
+          scale=c(5,0.5),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Spectral"))
+```
+
+From the wordcloud of married people, friend is also a significant word. However, instead of leisure-related words, we can see more words that are family related, including husband, wife, son, daughter, kids and baby. Hence, we find that most happy moments of married people are related to family and friends.
+
+Apperantly, single and married people define happiness through different things. We can futher look into the difference by comparing the distributions of 7 happiness categories of these two groups of people.
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+
+single_plot <- s.data %>%
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.45), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ 
+
+married_plot <- m.data %>%
+  group_by(predicted_category) %>% tally() %>%
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.45), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+grid.arrange(single_plot, married_plot, nrow = 1)
+```
+
+From the barplot, we can see that single people achieve happiness more through achievements than affection while the married group, on the countrary, defines happiness more through affection. When comparing two barplots, we can see that the distribution of married group is approaximately 8% lower in achievement, 16% higher in affection, and slightly lower or equal in the other categories than the single group. That means after marriage, definition of happiness tend to switch to the categories of affection and mostly switch from the category of achievement.
+
+Having noticed that marriage does alter the definition of happiness in some ways, I will further divide the population according to gender, country and age to see how marriage affects different groups of people differently.
+
+##1.Gender
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#female
+f.single.plot <- s.data %>% 
+  filter(gender == "f") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Female Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+f.married.plot <- m.data %>% 
+  filter(gender == "f") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Female Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(f.single.plot, f.married.plot, nrow = 1)
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#male
+m.single.plot <- s.data %>% 
+  filter(gender == "m") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Male Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+m.married.plot <- m.data %>% 
+  filter(gender == "m") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Male Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+grid.arrange(m.single.plot, m.married.plot, nrow = 1)
+```
+
+By comparing barplots of female, we see that distribution of married group is 7% lower in achievement and 15% higher in affection. For the male group, the distribution of married group is 6% lower in achievement and 15% higher in affection. The changes are approaximately the same. Intuitively, one would think that female tend to switch more from the achievement category to the affection category, but it turns about that marriage affects female and male approaximately the same. However, no matter single or married, the percentage of achievement is higher and the percentage of affection is lower for the male group than the female group.
+
+## 2.Country
+
+Since most interviewed people are from USA and India, I will compare how marriage affects people from these two countries.
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+hm_data %>% 
+  group_by(country) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  head(5)
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#USA
+USA.single.plot <- s.data %>% 
+  filter(country == "USA") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "USA Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+USA.married.plot <- m.data %>% 
+  filter(country == "USA") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "USA Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+grid.arrange(USA.single.plot, USA.married.plot, nrow = 1)
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#India
+IND.single.plot <- s.data %>% 
+  filter(country == "IND") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "India Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+IND.married.plot <- m.data %>% 
+  filter(country == "IND") %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "India Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+grid.arrange(IND.single.plot, IND.married.plot, nrow = 1)
+```
+
+From the barplots, we see that for US people, the distribution of married group is 8% lower in achievement and 19% higher in affection. For the India people, the distribution of married group is 3% lower in achievement and 3% higher in affection. It shows that US people change their definition of happiness after marriage more drastucally than India people. For India people, their is only slight difference between distributions of single and married people.
+
+One more interesting thing from the graph is that for India people, even before marriage, they experience more happiness through affecion category than achievement category. While marriage switches Americans' definition of happiness from achievement to affection, India people has always achieved more happiness througn affection.
+
+##3.Age
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#Under 30
+Under.single.plot <- s.data %>% 
+  filter(age<30) %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Under 30 Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+Under.married.plot <- m.data %>% 
+  filter(age<30) %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Under 30 Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+grid.arrange(Under.single.plot, Under.married.plot, nrow = 1)
+```
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#Above 30
+Above.single.plot <- s.data %>% 
+  filter(age>=30) %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "steelblue")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Above 30 Single", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+Above.married.plot <- m.data %>% 
+  filter(age>=30) %>% 
+  group_by(predicted_category) %>% tally() %>% 
+  ggplot(aes(x = predicted_category, y = n/sum(n)))+
+  geom_col(fill = "coral")+
+  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
+  labs(title = "Above 30 Married", y = "frequency")+
+  scale_y_continuous(limits=c(0,0.5), breaks = seq(0,0.5,0.1))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+grid.arrange(Above.single.plot, Above.married.plot, nrow = 1)
+```
+
+From the barplots, we see that for people that are under 30, the distribution of married group is 9% lower in achievement and 14% higher in affection. For the people above 30, the distribution of married group is 8% lower in achievement and 19% higher in affection. It shows that people of different age groups tend to react similarly. People above 30 switch slightly more to the affection category.
+
+#Summary
+As the marital status changes from the single to married, focus of life changes and so does the definition of happiness. Married people tend to perceive happiness more through affection category than achievement category. Female and male reacts similarly after marriage. Poeple above 30 switch slightly more to the affection category than people below 30. While marriage alters Americans' definition of happiness drastically from achievement to affection, India people has always achieved more happiness througn affection.
+
+#References
+1. https://github.com/rit-public/HappyDB
