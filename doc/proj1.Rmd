@@ -40,7 +40,7 @@ hm_data <- hm_data %>%
          text) %>%
   mutate(count = sapply(hm_data$text, wordcount)) %>%
   filter(gender %in% c("m", "f")) %>%
-  filter(marital %in% c("single", "married", "divorced", "separated", "widowed")) %>%
+  filter(marital %in% c("single", "married")) %>%
   filter(parenthood %in% c("n", "y")) %>%
   filter(reflection_period %in% c("24h", "3m")) %>%
   mutate(reflection_period = fct_recode(reflection_period, 
@@ -97,7 +97,7 @@ hm_data %>%
   
 ```
 
-Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, comparing wordclous of two groups of people can roughly give us a sense of what defines their happiness.
+Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, to roughly gain a sense of what defines their happiness, I will compare the 25 most frequently mentioned words by two groups of people
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 s.data <- hm_data %>% filter(marital == "single")
@@ -105,78 +105,51 @@ m.data <- hm_data %>% filter(marital == "married")
 ```
 
 
-```{r single wordcloud, warning=FALSE, message=FALSE, echo=FALSE}
-set.seed(0)
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 bag_of_words_single <-  s.data %>%
   unnest_tokens(word, text)
 
 word_count_single <- bag_of_words_single %>%
   count(word, sort = TRUE)
 
-
-wordcloud(word_count_single$word, word_count_single$n,
-          scale=c(5,0.5),
-          max.words=100,
-          min.freq=1,
-          random.order=FALSE,
-          rot.per=0.3,
-          use.r.layout=T,
-          random.color=FALSE,
-          colors=brewer.pal(9,"Spectral"))
-```
-
-By looking at the wordcloud of the single group, we can see that, similar to the overall wordcloud, friend, family and home are the most important words. Also, we can see words like game, dinner, birthday, movie and shopping in the surrounding. That means leisure and enjoy-the-moment types also largely contribute to the happiness moments of single people.
-
-```{r married wordcloud, warning=FALSE, message=FALSE, echo=FALSE}
-set.seed(0)
 bag_of_words_married <-  m.data %>%
   unnest_tokens(word, text)
 
 word_count_married <- bag_of_words_married %>%
   count(word, sort = TRUE)
 
+single.freqword <- word_count_single %>% 
+  head(20) %>% 
+  ggplot(aes(x=reorder(word,n), y = n))+
+  geom_col()+
+  labs(title = "Single", x = "word")+
+  coord_flip()
 
-wordcloud(word_count_married$word, word_count_married$n,
-          scale=c(5,0.5),
-          max.words=100,
-          min.freq=1,
-          random.order=FALSE,
-          rot.per=0.3,
-          use.r.layout=T,
-          random.color=FALSE,
-          colors=brewer.pal(9,"Spectral"))
+married.freqword <- word_count_married %>% 
+  head(20) %>% 
+  ggplot(aes(x=reorder(word,n), y = n))+
+  labs(title = "Married", x = "word")+
+  geom_col()+
+  coord_flip()
+
+grid.arrange(single.freqword , married.freqword, nrow = 1)
 ```
 
-From the wordcloud of married people, friend is also a significant word. However, instead of leisure-related words, we can see more words that are family related, including husband, wife, son, daughter, kids and baby. Hence, we find that most happy moments of married people are related to family and friends.
+For the single group, we can see that friend, family and home are some of the most important words. Also, we can see words like game and job. That means leisure and achieveement types also largely contribute to the happiness moments of single people.
+
+For the married people, friend is also a significant word. However, instead of leisure and achievement related words, we can see more words that are family related, including husband, wife, son, daughter, kids and baby. Hence, we find that most happy moments of married people are related to family and friends.
 
 Apperantly, single and married people define happiness through different things. We can futher look into the difference by comparing the distributions of 7 happiness categories of these two groups of people.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-
-single_plot <- s.data %>%
-  group_by(predicted_category) %>% tally() %>% 
-  ggplot(aes(x = predicted_category, y = n/sum(n)))+
-  geom_col(fill = "steelblue")+
-  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
-  labs(title = "Single", y = "frequency")+
-  scale_y_continuous(limits=c(0,0.45), breaks = seq(0,0.5,0.1))+
+hm_data %>% group_by(marital, predicted_category) %>% tally() %>% ungroup() %>% group_by(marital) %>% mutate(freq = n/sum(n)) %>% 
+  ggplot( aes(x = predicted_category, y = freq, fill = marital))+
+  geom_col(position = "dodge")+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
- 
-
-married_plot <- m.data %>%
-  group_by(predicted_category) %>% tally() %>%
-  ggplot(aes(x = predicted_category, y = n/sum(n)))+
-  geom_col(fill = "coral")+
-  geom_text(aes(x=predicted_category, label = round(n/sum(n),2), vjust=-0.3)) +
-  labs(title = "Married", y = "frequency")+
-  scale_y_continuous(limits=c(0,0.45), breaks = seq(0,0.5,0.1))+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
-grid.arrange(single_plot, married_plot, nrow = 1)
 ```
 
-From the barplot, we can see that single people achieve happiness more through achievements than affection while the married group, on the countrary, defines happiness more through affection. When comparing two barplots, we can see that the distribution of married group is approaximately 8% lower in achievement, 16% higher in affection, and slightly lower or equal in the other categories than the single group. That means after marriage, definition of happiness tend to switch to the categories of affection and mostly switch from the category of achievement.
+From the barplot, we can see that for married group, the percentage of achievement is lower, the percentage of affection is much higher and percentage of the other categories are slightly lower than the single group. That means after marriage, definition of happiness tend to switch to the categories of affection and are mostly switched from the category of achievement.
 
 Having noticed that marriage does alter the definition of happiness in some ways, I will further divide the population according to gender, country and age to see how marriage affects different groups of people differently.
 
