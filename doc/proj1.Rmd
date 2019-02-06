@@ -78,7 +78,7 @@ distinct(hm_data, predicted_category)
 ```
 
 
-In this dataset, approaximately 54% of the interviewd people are sigle and 41% are married. The rest of them are either divorved, seperated or widowed. Since the majority of interviewed people fall into the categories of single and married, I will focus on these two groups and explore whether marriage alters people's definition of happiness.
+In this dataset, approaximately 54% of the interviewd people are single and 41% are married. The rest of them are either divorved, seperated or widowed. Since the majority of interviewed people fall into the categories of single and married, I will focus on these two groups and explore whether marriage alters people's definition of happiness.
 
 #Data Exploration
 
@@ -97,7 +97,7 @@ hm_data %>%
   
 ```
 
-Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, to roughly gain a sense of what defines their happiness, I will compare wordcould for both groups and the 25 most frequently mentioned words by two groups of people
+Then, I will divide people into two groups: single and married, and explore whether these two groups of people perceive happiness through different events. First, to roughly gain a sense of what defines their happiness, I will compare wordcloud for both groups and the 25 most frequently mentioned words by two groups of people.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 s.data <- hm_data %>% filter(marital == "single")
@@ -162,7 +162,7 @@ grid.arrange(single.freqword , married.freqword, nrow = 1)
 
 For the single group, we can see that friend, family and home are some of the most important words. Also, we can see words like game and job. That means leisure and achievement types also largely contribute to the happiness moments of single people.
 
-For the married people, friend is also a significant word. However, instead of leisure and achievement related words, we can see more words that are family related, including husband, wife, son, daughter, kids and baby. Hence, we find that most happy moments of married people are related to family and friends.
+For the married people, friend is also a significant word. However, instead of leisure and achievement related words, we can see more words that are family related, including husband, wife, son, daughter, kids and baby. Hence, we find that many happy moments of married people are related to family and friends.
 
 Apperantly, single and married people define happiness through different things. We can futher look into the difference by comparing the distributions of 7 happiness categories of these two groups of people.
 
@@ -302,7 +302,7 @@ IND.married.plot <- m.data %>%
 grid.arrange(IND.single.plot, IND.married.plot, nrow = 1)
 ```
 
-From the barplots, we see that for US people, the distribution of married group is 8% lower in achievement and 19% higher in affection. For the India people, the distribution of married group is 3% lower in achievement and 3% higher in affection. It shows that US people change their definition of happiness after marriage more drastucally than India people. For India people, their is only slight difference between distributions of single and married people.
+From the barplots, we see that for US people, the distribution of married group is 8% lower in achievement and 19% higher in affection. For the India people, the distribution of married group is 3% lower in achievement and 3% higher in affection. It shows that US people change their definition of happiness after marriage more drastically than India people. For India people, their is only slight difference between distributions of single and married people.
 
 One more interesting thing from the graph is that for India people, even before marriage, they experience more happiness through affecion category than achievement category. While marriage switches Americans' definition of happiness from achievement to affection, India people has always achieved more happiness througn affection.
 
